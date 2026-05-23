@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: twocare-postgres
+    environment:
+      POSTGRES_USER: twocare
+      POSTGRES_PASSWORD: twocare
+      POSTGRES_DB: twocare
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twocare"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: twocare-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+    container_name: twocare-backend
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://twocare:twocare@postgres:5432/twocare
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  agent:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.agent
+    container_name: twocare-agent
+    env_file: ../.env
+    environment:
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1
+
+# ---- builder ----
+FROM python:3.11-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /build
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
+
+COPY pyproject.toml uv.lock* ./
+COPY config.py ./
+COPY agent ./agent
+COPY backend ./backend
+COPY workers ./workers
+
+RUN uv sync --no-dev --no-editable --frozen 2>/dev/null || uv sync --no-dev --no-editable
+
+# ---- runtime ----
+FROM python:3.11-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+COPY alembic.ini ./
+COPY alembic ./alembic
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+CMD ["twocare-backend"]

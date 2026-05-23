@@ -1,0 +1,52 @@
+# Fly.io — LiveKit Agents worker (twocare-agent)
+#
+# Deploy:
+#   fly deploy --config infra/fly.agent.toml --dockerfile infra/Dockerfile.agent
+#
+# The agent worker is an OUTBOUND process — it dials out to LiveKit
+# Cloud over WSS and registers as a worker. No inbound port is needed
+# (Fly's free tier loves this) and there is no public HTTP surface.
+# When a LiveKit room is created (inbound SIP call or outbound campaign
+# CreateSIPParticipant), LiveKit dispatches the job to one of these
+# registered workers.
+#
+# Statelessness: each call is one Python coroutine. Session state lives
+# in Redis (Tier 1) + Postgres (Tiers 2/3). Killing a machine mid-call
+# drops THAT call only; the next call is routed to another instance.
+#
+# Scaling: `fly scale count N -a twocare-agent` adds N machines.
+# LiveKit's dispatch pool round-robins. We default to 2 for HA — if one
+# machine crashes, calls still route to the other while Fly respawns it.
+
+app = "twocare-agent"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile.agent"
+
+[env]
+  # The agent talks to the backend over Fly's private .internal network.
+  # No public DNS, no TLS overhead.
+  BACKEND_URL = "http://twocare-backend.internal:8000"
+  PYTHONUNBUFFERED = "1"
+  # LiveKit Agents worker tuning: keep one prewarmed slot per machine so
+  # the first inbound call doesn't pay the silero/Groq cold-start tax.
+  # See `prewarm` in agent/main.py.
+  LIVEKIT_AGENTS_WORKER_POOL = "1"
+
+# IMPORTANT: no [http_service] block — this worker has no public port.
+# It dials LiveKit Cloud out over WSS and waits for job dispatches.
+# This is also why no inbound firewall rule / health-check path is needed.
+
+[[vm]]
+  # Voice pipeline is CPU-bound on STT + LLM token streaming + TTS
+  # encode. shared-cpu-1x is enough for ~4-8 concurrent calls per
+  # machine; jump to shared-cpu-2x or performance-2x for >10 concurrent.
+  size = "shared-cpu-1x"
+  memory = "1gb"
+
+[deploy]
+  # Rolling so we never drop all worker capacity during a deploy.
+  # `max_unavailable` defaults to 1 — with min count 2 this means
+  # exactly 1 machine is being replaced at a time.
+  strategy = "rolling"

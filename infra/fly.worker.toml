@@ -1,0 +1,46 @@
+# Fly.io — Celery worker + beat (twocare-worker)
+#
+# Deploy:
+#   fly deploy --config infra/fly.worker.toml --dockerfile infra/Dockerfile.worker
+#
+# This app runs TWO process groups out of one image:
+#   - `worker` — Celery worker pulling jobs from Redis (place_reminder_call,
+#     place_followup_call, sweep_reminder_window). Scales horizontally.
+#   - `beat`   — Celery beat, the cron scheduler. EXACTLY ONE instance —
+#     never scale beat above 1 or you'll fire duplicate sweeps.
+#
+# The daily 9am IST reminder sweep is a `crontab(hour=9, minute=0)` entry
+# on the beat schedule (see workers/celery_app.py). Beat enqueues a job;
+# any worker can pick it up and dispatch the per-appointment calls.
+
+app = "twocare-worker"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile.worker"
+
+[env]
+  BACKEND_URL = "http://twocare-backend.internal:8000"
+  PYTHONUNBUFFERED = "1"
+  # Celery worker concurrency — one Celery prefork per CPU; each task is
+  # I/O bound (HTTP to backend + LiveKit) so more concurrency than CPUs
+  # is fine. The agent dial only takes ~500ms; this number sets the
+  # maximum simultaneous outbound campaign dials per machine.
+  CELERY_WORKER_CONCURRENCY = "8"
+
+# No public HTTP surface — Celery talks to Redis (Upstash) outbound only.
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[processes]
+  worker = "celery -A workers.celery_app:celery_app worker --loglevel=info --concurrency=$CELERY_WORKER_CONCURRENCY"
+  beat   = "celery -A workers.celery_app:celery_app beat   --loglevel=info"
+
+[deploy]
+  strategy = "rolling"
+
+# Scaling note for operators:
+#   fly scale count 2 --process-group worker -a twocare-worker  # OK
+#   fly scale count 1 --process-group beat   -a twocare-worker  # MUST stay 1
