@@ -740,7 +740,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     if campaign_meta is not None:
         # Outbound campaign: open with the campaign-specific line.
-        opening = opening_line(campaign_meta)
+        opening = opening_line(campaign_meta, lang=preferred_language)
         # Kick off the voicemail watchdog the moment we start speaking.
         asyncio.create_task(_voicemail_watchdog())
     elif initial_locked:

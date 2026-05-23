@@ -98,26 +98,78 @@ def _format_time(iso: str | None) -> str:
     return dt.strftime("%-I:%M %p on %A").lstrip("0")
 
 
-def opening_line(meta: CampaignMetadata) -> str:
+OPENINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "reminder": "Hi {name}, this is a reminder for your appointment with Dr. {doc} tomorrow at {when}. Are you able to make it?",
+        "followup": "Hi {name}, this is a quick follow-up from the clinic. How are you feeling after your visit with Dr. {doc}?"
+    },
+    "hi": {
+        "reminder": "नमस्ते {name}, मैं 2careAi क्लिनिक से बोल रही हूँ। कल {when} डॉक्टर {doc} के साथ आपका अपॉइंटमेंट है। क्या आप आ पाएंगे?",
+        "followup": "नमस्ते {name}, मैं 2careAi क्लिनिक से बोल रही हूँ। डॉक्टर {doc} से मिलने के बाद अब आप कैसा महसूस कर रहे हैं?"
+    },
+    "bn": {
+        "reminder": "নমস্কার {name}, আমি 2careAi ক্লিনিক থেকে বলছি। আগামীকাল {when} ডাক্তার {doc}-এর সাথে আপনার অ্যাপয়েন্টমেন্ট আছে। আপনি কি আসতে পারবেন?",
+        "followup": "নমস্কার {name}, আমি 2careAi ক্লিনিক থেকে বলছি। ডাক্তার {doc}-এর সাথে দেখা করার পর এখন আপনি কেমন বোধ করছেন?"
+    },
+    "ta": {
+        "reminder": "வணக்கம் {name}, 2careAi கிளினிக்கில் இருந்து பேசுகிறேன். நாளை {when} டாக்டர் {doc} உடன் உங்கள் அப்பாயிண்ட்மெண்ட் உள்ளது. உங்களால் வர முடியுமா?",
+        "followup": "வணக்கம் {name}, 2careAi கிளினிக்கில் இருந்து பேசுகிறேன். டாக்டர் {doc} உடனான உங்கள் சந்திப்பிற்குப் பிறகு இப்போது உடல்நிலை எப்படி இருக்கிறது?"
+    },
+    "te": {
+        "reminder": "నమస్కారం {name}, నేను 2careAi క్లినిక్ నుండి మాట్లాడుతున్నాను. రేపు {when} డాక్టర్ {doc} గారితో మీ అపాయింట్‌మెంట్ ఉంది. మీరు రాగలరా?",
+        "followup": "నమస్కారం {name}, నేను 2careAi క్లినిక్ నుండి మాట్లాడుతున్నాను. డాక్టర్ {doc} గారిని కలిసిన తర్వాత ఇప్పుడు మీకు ఎలా ఉంది?"
+    },
+    "kn": {
+        "reminder": "ನಮಸ್ಕಾರ {name}, ನಾನು 2careAi ಕ್ಲಿನಿಕ್‌ನಿಂದ ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ. ನಾಳೆ {when} ಡಾಕ್ಟರ್ {doc} ಅವರೊಂದಿಗೆ ನಿಮ್ಮ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಇದೆ. ನಿಮಗೆ ಬರಲು ಸಾಧ್ಯವೇ?",
+        "followup": "ನಮಸ್ಕಾರ {name}, ನಾನು 2careAi ಕ್ಲಿನಿಕ್‌ನಿಂದ ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ. ಡಾಕ್ಟರ್ {doc} ಅವರ ಭೇಟಿಯ ನಂತರ ನಿಮಗೆ ಈಗ ಹೇಗೆ ಅನ್ನಿಸುತ್ತಿದೆ?"
+    },
+    "ml": {
+        "reminder": "നമസ്കാരം {name}, ഞാൻ 2careAi ക്ലിനിക്കിൽ നിന്നാണ് സംസാരിക്കുന്നത്. നാളെ {when} ഡോക്ടർ {doc}-മായി അപ്പോയിന്റ്മെന്റ് ഉണ്ട്. വരാൻ സാധിക്കുമോ?",
+        "followup": "നമസ്കാരം {name}, ഞാൻ 2careAi ക്ലിനിക്കിൽ നിന്നാണ് സംസാരിക്കുന്നത്. ഡോക്ടർ {doc}-നെ കണ്ടതിന് ശേഷം ഇപ്പോൾ എങ്ങനെയുണ്ട്?"
+    },
+    "mr": {
+        "reminder": "नमस्कार {name}, मी 2careAi क्लिनिकमधून बोलत आहे. उद्या {when} डॉक्टर {doc} यांच्यासोबत तुमची अपॉइंटमेंट आहे. तुम्ही येऊ शकाल का?",
+        "followup": "नमस्कार {name}, मी 2careAi क्लिनिकमधून बोलत आहे. डॉक्टर {doc} यांच्या भेटीनंतर आता तुम्हाला कसे वाटत आहे?"
+    },
+    "gu": {
+        "reminder": "નમસ્તે {name}, હું 2careAi ક્લિનિકથી વાત કરી રહી છું. કાલે {when} ડૉક્ટર {doc} સાથે તમારી એપોઇન્ટમેન્ટ છે. શું તમે આવી શકશો?",
+        "followup": "નમસ્તે {name}, હું 2careAi ક્લિનિકથી વાત કરી રહી છું. ડૉક્ટર {doc} ની મુલાકાત પછી હવે તમને કેવું લાગે છે?"
+    },
+    "pa": {
+        "reminder": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {name}, ਮੈਂ 2careAi ਕਲੀਨਿਕ ਤੋਂ ਬੋਲ ਰਹੀ ਹਾਂ। ਕੱਲ੍ਹ {when} ਡਾਕਟਰ {doc} ਨਾਲ ਤੁਹਾਡੀ ਅਪਾਇੰਟਮੈਂਟ ਹੈ। ਕੀ ਤੁਸੀਂ ਆ ਸਕੋਗੇ?",
+        "followup": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {name}, ਮੈਂ 2careAi ਕਲੀਨਿਕ ਤੋਂ ਬੋਲ ਰਹੀ ਹਾਂ। ਡਾਕਟਰ {doc} ਨੂੰ ਮਿਲਣ ਤੋਂ ਬਾਅਦ ਹੁਣ ਤੁਸੀਂ ਕਿਵੇਂ ਮਹਿਸੂਸ ਕਰ ਰਹੇ ਹੋ?"
+    }
+}
+
+
+def opening_line(meta: CampaignMetadata, lang: str = "en") -> str:
     """The first sentence the agent says on the call.
 
-    Kept short and natural — the rest of the conversation runs through the
-    standard tool suite once the patient responds.
+    Dynamically adapts to the patient's preferred language.
     """
-    name = meta.patient_name or "there"
-    doc = meta.doctor_name or "your doctor"
+    lang_code = (lang or "en").split("-", 1)[0].lower()
+    templates = OPENINGS.get(lang_code, OPENINGS["en"])
+    template = templates.get(meta.campaign_type, templates["reminder"])
+
+    if lang_code == "hi":
+        name = meta.patient_name or "जी"
+        doc = meta.doctor_name or "अपने डॉक्टर"
+    elif lang_code == "ta":
+        name = meta.patient_name or "அவர்களே"
+        doc = meta.doctor_name or "உங்கள் மருத்துவர்"
+    elif lang_code == "kn":
+        name = meta.patient_name or "ಅವರೇ"
+        doc = meta.doctor_name or "ನಿಮ್ಮ ವೈದ್ಯರು"
+    elif lang_code == "gu":
+        name = meta.patient_name or "જી"
+        doc = meta.doctor_name or "તમારા ડૉક્ટર"
+    else:
+        name = meta.patient_name or "there"
+        doc = meta.doctor_name or "your doctor"
+
     when = _format_time(meta.appointment_start)
 
-    if meta.campaign_type == "reminder":
-        return (
-            f"Hi {name}, this is a reminder for your appointment with "
-            f"Dr. {doc} tomorrow at {when}. Are you able to make it?"
-        )
-    # followup
-    return (
-        f"Hi {name}, this is a quick follow-up from the clinic. "
-        f"How are you feeling after your visit with Dr. {doc}?"
-    )
+    return template.format(name=name, doc=doc, when=when)
 
 
 def system_prompt_suffix(meta: CampaignMetadata) -> str:
