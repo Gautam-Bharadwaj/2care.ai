@@ -19,7 +19,7 @@ from agent.tools import (
     reschedule_appointment,
 )
 
-LLM_MODEL = "llama-3.1-8b-instant"
+LLM_MODEL = "llama-3.3-70b-versatile"
 
 
 # Structured for latency: Groq TTFT scales with prompt tokens. Keeps the
