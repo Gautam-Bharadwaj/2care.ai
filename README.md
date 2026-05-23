@@ -75,6 +75,12 @@ flowchart TD
     class VAD,STT,TD,LLM,TTS agent;
     class API,VoiceFB backend;
     class Redis,PG,Worker data;
+
+    style Client fill:none,stroke:#888,stroke-width:1px,stroke-dasharray: 5 5
+    style Media fill:none,stroke:#888,stroke-width:1px,stroke-dasharray: 5 5
+    style Agent fill:none,stroke:#888,stroke-width:1px,stroke-dasharray: 5 5
+    style Backend fill:none,stroke:#888,stroke-width:1px,stroke-dasharray: 5 5
+    style Data fill:none,stroke:#888,stroke-width:1px,stroke-dasharray: 5 5
 ```
 
 ### Core modules
