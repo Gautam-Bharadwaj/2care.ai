@@ -115,9 +115,15 @@ function asksConfirmation(t: string): boolean {
 }
 
 function isConfirmed(t: string): boolean {
-  return /\b(booked|success|done|all set|scheduled|appointment is set|booking complete|बुक हो गया|बुक कर दिया|सफलतापूर्वक|பதிவு செய்யப்பட்டது|స్థిరపరచబడింది|ಬುಕ್ ಆಗಿದೆ)\b/i.test(
-    t
-  );
+  if (!t) return false;
+  const text = t.toLowerCase();
+  const lat =
+    /\b(booked|confirmed|appointment is set|booking complete)\b/.test(text) &&
+    /\b(sms|sent|confirmation)\b/.test(text);
+  const indic =
+    /(बुक|कन्फर्म|पुष्टि|பதிவ|எஸ்எம்எஸ்|बुकिंग)/.test(text) &&
+    /(sms|एसएमएस|भेज|sent|அனுப்ப)/i.test(text);
+  return lat || indic;
 }
 
 function extractDoctor(t: string): string | undefined {
