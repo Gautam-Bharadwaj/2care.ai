@@ -12,7 +12,7 @@ A voice AI agent that handles inbound appointment booking and outbound reminders
 
 ## Demo
 
-**Loom walkthrough:** _add link before submission_
+**Loom walkthrough:** [Watch Video Walkthrough](https://drive.google.com/file/d/1ZHurA4DOicn5wiNWGKi2Hpi1AIGP8pCa/view?usp=sharing)
 
 A 3-minute walkthrough of the live demo and architecture overview.
 

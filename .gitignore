@@ -34,12 +34,6 @@ env/
 *.swo
 .DS_Store
 
-# AI agent configs (not part of project)
-.claude/
-.cursor/
-.aider*
-.gemini/
-
 # Logs
 *.log
 logs/
