@@ -121,8 +121,8 @@ function isConfirmed(t: string): boolean {
     /\b(booked|confirmed|appointment is set|booking complete)\b/.test(text) &&
     /\b(sms|sent|confirmation)\b/.test(text);
   const indic =
-    /(बुक|कन्फर्म|पुष्टि|பதிவ|எஸ்எம்எஸ்|बुकिंग)/.test(text) &&
-    /(sms|एसएमएस|भेज|sent|அனுப்ப)/i.test(text);
+    /(बुक|कन्फर्म|पुष्टि|बुकिंग|பதிவ|பதிவு|உறுதி|ಬುಕ್|ಖಚಿತ|ಬುಕ್|ನಿರ್ಧಾರಣ|বুক|নিশ্চিত|બુક|કન્ફર્મ|ബുക്ക്|ഉറപ്പ|ਬੁੱਕ|ਕਨਫਰਮ)/.test(text) &&
+    /(sms|एसएमएस|भेज|sent|அனுப்ப|ಕಳುಹಿಸ|ఎస్ఎంఎస్|పంప|পাঠানো|મોકલી|അയച്ച|അയച്ചിട്ടുണ്ട|ਭੇਜ)/i.test(text);
   return lat || indic;
 }
 

@@ -117,8 +117,22 @@ def _looks_like_booking_confirmation(text: str) -> bool:
     if not text:
         return False
     t = text.lower()
-    return any(k in t for k in ("booked", "confirmed", "appointment is set", "booking complete")) \
-        and any(k in t for k in ("sms", "sent", "confirmation"))
+    
+    # booking confirmation words across all 10 languages
+    booking_words = ("booked", "confirmed", "appointment is set", "booking complete",
+                     "बुक", "कन्फर्म", "पुष्टि", "बुकिंग", "பதிவ", "பதிவு", "உறுதி",
+                     "ಬುಕ್", "ಖಚಿತ", "ಬುಕ್", "ನಿರ್ಧಾರಣ", "বুক", "নিশ্চিত", "બુક",
+                     "કન્ફર્મ", "બુક", "ബുക്ക്", "ഉറപ്പ", "ਬੁੱਕ", "ਕਨਫਰਮ")
+                     
+    # transmission words across all 10 languages
+    sms_words = ("sms", "sent", "confirmation", "भेज", "भेजा", "எஸ்எம்எஸ்",
+                 "அனுப்ப", "ಕಳುಹಿಸ", "ಎಸ್ಎಂಎಸ್", "పంప", "পাঠানো", "મોકલી",
+                 "അയച്ച", "അയച്ചിട്ടുണ്ട", "ਭੇਜ")
+                 
+    has_booking = any(w in t for w in booking_words)
+    has_sms = any(w in t for w in sms_words)
+    
+    return has_booking and has_sms
 
 
 def _last_known_booking(session_memory, language: str) -> dict:
