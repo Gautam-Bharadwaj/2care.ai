@@ -72,28 +72,11 @@ class VoiceChatResponse(BaseModel):
 # roleplay the tool effects conversationally instead.
 DEMO_SYSTEM_SUFFIX_TEMPLATE = """\
 
-[Demo mode · {language_name} only]
-This is a UI prototype with no DB connection. When the caller wants to
-book/reschedule/cancel:
-- Roleplay tool calls in natural language ("Let me check Dr. Mehra's
-  Tuesday morning slots… I see 9:00, 9:30, and 11:15. Which works?")
-  rather than calling tools.
-- Invent plausible slot times in the next 7 days.
-- After the caller confirms, say "Booked. I've sent the SMS." in a
-  natural way; the page will surface the confirmation card afterwards.
-- Keep replies short — one or two sentences. This is a phone call.
-- You are a female clinic receptionist. In Hindi use feminine verb forms
-  (e.g. कर रही हूँ, बोल रही हूँ). In Tamil use natural feminine speech.
-- For clear TTS pronunciation, write times as words in the active
-  script (e.g. Hindi: "सुबह नौ बजे", Tamil: "காலை ஒன்பது மணி") and
-  avoid English words unless the caller used them first.
-
-CRITICAL: Every single one of your replies in this conversation MUST be
-written entirely in {language_name}. The caller picked {language_name}
-at the start; do not respond in any other language unless they
-themselves switch to it for 2 turns in a row. If they wrote one English
-phrase inside a Hindi sentence, that is code-switching, not a language
-change — you still reply in their primary language.
+[Demo mode · {language_name}]
+No database — roleplay booking naturally: "Lemme check… Tuesday 9 and
+9:30 are open — which works?" Invent plausible slots; after "yes" say
+"Done ji, appointment confirm ho gaya" warmly. One question per turn.
+Match caller tone (Hinglish if they use it). Never sound like a chatbot.
 {script_rule}
 """
 
@@ -106,9 +89,8 @@ SCRIPT_RULES: dict[str, str] = {
         "Use plain English / Latin alphabet only. Numerals as digits (10:30 AM)."
     ),
     "hi": (
-        "Write in Devanagari script (Hindi). Every word — including numerals "
-        "where natural — must use Devanagari letters (अ-ह, क्ष, त्र, ज्ञ). "
-        "Do NOT slip into Latin transliteration."
+        "Hindi session: use Devanagari OR natural Hinglish (Latin) to match "
+        "the caller — never drift into Tamil/Kannada/Gujarati script."
     ),
     "kn": (
         "Write in Kannada script ONLY (Unicode block ಀ–೿). Every word must "
@@ -402,14 +384,18 @@ def _reply_matches_script(text: str, lang: str) -> bool:
         # English: at least one ASCII letter, and no big chunk of any
         # Indic block. Cheap heuristic — full text is normally Latin.
         return any(c.isascii() and c.isalpha() for c in text)
+    significant = sum(1 for c in text if not c.isspace() and c not in ".,;:!?-—…'\"")
+    if significant == 0:
+        return False
     in_range = sum(
         1
         for c in text
         if any(lo <= c <= hi for lo, hi in ranges)
     )
-    significant = sum(1 for c in text if not c.isspace() and c not in ".,;:!?-—…'\"")
-    if significant == 0:
-        return False
+    # Hindi demo/live: allow Devanagari or natural Hinglish (Latin).
+    if lang == "hi":
+        latin = sum(1 for c in text if c.isascii() and c.isalpha())
+        return in_range / significant >= 0.33 or latin / significant >= 0.45
     return in_range / significant >= 0.33
 
 

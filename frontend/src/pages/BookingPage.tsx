@@ -207,6 +207,7 @@ export default function BookingPage() {
               onConnected: handlers.onConnected,
               onDisconnected: handlers.onDisconnected,
               onEvent: handlers.onEvent,
+              onAmplitude: handlers.onAmplitude,
               onError: handlers.onError,
             });
           } catch (lkErr) {
@@ -222,6 +223,9 @@ export default function BookingPage() {
       callRef.current = call;
     } catch (err) {
       const msg = String((err as Error)?.message || "");
+      if (msg === "BACKEND_DOWN") {
+        return;
+      }
       if (msg === "MIC_DENIED" || msg === "MIC_UNSUPPORTED" || msg === "MIC_INSECURE") {
         dispatch({
           type: "ERROR",

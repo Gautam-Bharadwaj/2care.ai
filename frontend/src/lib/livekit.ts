@@ -10,6 +10,7 @@ import {
   type RemoteTrackPublication,
 } from "livekit-client";
 
+import { resumeAudioContext } from "./mic";
 import type { AgentEvent, TokenResponse } from "./types";
 import type { LangCode } from "./languages";
 
@@ -19,6 +20,7 @@ export interface ConnectArgs {
   language: LangCode;
   patientPhone?: string;
   onEvent: (ev: AgentEvent) => void;
+  onAmplitude?: (amp: number) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
   onError?: (message: string) => void;
@@ -51,6 +53,49 @@ export async function startCall(args: ConnectArgs): Promise<ActiveCall> {
 
   let ended = false;
   const agentAudioEls: HTMLAudioElement[] = [];
+  let audioCtx: AudioContext | null = null;
+  let analyser: AnalyserNode | null = null;
+  let ampFrame: number | null = null;
+
+  const stopMicMonitor = () => {
+    if (ampFrame != null) cancelAnimationFrame(ampFrame);
+    ampFrame = null;
+    if (audioCtx) {
+      audioCtx.close().catch(() => undefined);
+      audioCtx = null;
+    }
+    analyser = null;
+  };
+
+  const startMicMonitor = (stream: MediaStream) => {
+    if (!args.onAmplitude) return;
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    audioCtx = new Ctx();
+    void resumeAudioContext(audioCtx).then(() => {
+      if (ended || !audioCtx) return;
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.4;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      let prev = 0;
+      const tick = () => {
+        if (ended || !analyser) return;
+        analyser.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = Math.abs(buf[i] - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        prev = prev * 0.55 + peak * 0.45;
+        args.onAmplitude?.(prev);
+        ampFrame = requestAnimationFrame(tick);
+      };
+      ampFrame = requestAnimationFrame(tick);
+    });
+  };
 
   const stopAgentAudio = () => {
     for (const el of agentAudioEls) {
@@ -79,7 +124,13 @@ export async function startCall(args: ConnectArgs): Promise<ActiveCall> {
       noiseSuppression: true,
       autoGainControl: true,
     });
+    const micPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    const mediaTrack = micPub?.track?.mediaStreamTrack;
+    if (mediaTrack) {
+      startMicMonitor(new MediaStream([mediaTrack]));
+    }
   } catch {
+    stopMicMonitor();
     await room.disconnect().catch(() => undefined);
     throw new Error("MIC_DENIED");
   }
@@ -93,6 +144,7 @@ export async function startCall(args: ConnectArgs): Promise<ActiveCall> {
       ended = true;
 
       stopAgentAudio();
+      stopMicMonitor();
 
       try {
         await room.localParticipant.setMicrophoneEnabled(false);

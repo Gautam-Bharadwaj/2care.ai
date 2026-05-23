@@ -97,6 +97,26 @@ def test_greeting_for_returns_invite_when_unknown():
     assert greeting_for("hi") == LANG_CONFIG["hi"].greeting_text
 
 
+def test_greetings_do_not_mention_other_languages():
+    """Picker-selected language: greet only in that language (no 'speak Tamil…')."""
+    cross_lang_phrases = {
+        "en": ("hindi", "tamil", "any language"),
+        "hi": ("तमिल", "अंग्रेज़ी", "जिस भाषा"),
+        "ta": ("ஹிந்தி", "ஆங்கிலம்", "மொழியில்"),
+        "te": ("హిందీ", "ఇంగ్లీష్", "భాషలో"),
+    }
+    for code, phrases in cross_lang_phrases.items():
+        text = LANG_CONFIG[code].greeting_text.lower()
+        for phrase in phrases:
+            assert phrase.lower() not in text, (
+                f"{code} greeting mentions other languages: {text!r}"
+            )
+
+
+def test_hindi_cartesia_voice_updated():
+    assert LANG_CONFIG["hi"].cartesia_voice_id == "c1abd502-9231-4558-a054-10ac950c356d"
+
+
 def test_code_switch_invitation_mentions_multiple_scripts():
     # Invitation should at minimum contain Latin + Devanagari + Tamil glyphs
     # so a caller in any of those tongues recognizes it.

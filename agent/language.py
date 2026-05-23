@@ -29,19 +29,18 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="a7a59115-2425-4192-844c-1e98ec7d6877",
         display_name="English",
         greeting_text=(
-            "Hi! I can help you book an appointment. "
-            "Please speak in English, Hindi, Tamil, or any language you are "
-            "comfortable with. What do you need?"
+            "Hello, good morning. Hope you're doing well. "
+            "How may I help you today?"
         ),
     ),
     "hi": LangEntry(
         deepgram_code="hi",
-        cartesia_voice_id="56e35e2d-6eb6-4226-ab8b-9776515a7094",
+        # Hindi Narrator Woman — clearer clinic reception tone than the old voice.
+        cartesia_voice_id="c1abd502-9231-4558-a054-10ac950c356d",
         display_name="हिन्दी",
         greeting_text=(
-            "नमस्ते! मैं अपॉइंटमेंट बुक करने में मदद कर रही हूँ। "
-            "आप हिन्दी, अंग्रेज़ी, तमिल या जिस भाषा में चाहें बात कर सकते हैं। "
-            "आपको क्या चाहिए?"
+            "नमस्ते जी, आप कैसे हैं? सब ठीक है ना? "
+            "क्या डॉक्टर की अपॉइंटमेंट बुक करनी थी?"
         ),
     ),
     "bn": LangEntry(
@@ -49,9 +48,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="59ba7dee-8f9a-432f-a6c0-ffb33666b654",
         display_name="বাংলা",
         greeting_text=(
-            "নমস্কার! আমি অ্যাপয়েন্টমেন্ট বুক করতে সাহায্য করছি। "
-            "আপনি বাংলা, ইংরেজি, হিন্দি বা যেকোনো ভাষায় কথা বলতে পারেন। "
-            "আপনার কী দরকার?"
+            "নমস্কার, আপনি কেমন আছেন? "
+            "ডাক্তারের অ্যাপয়েন্টমেন্ট বুক করতে চেয়েছিলেন?"
         ),
     ),
     "ta": LangEntry(
@@ -59,9 +57,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="7f98e662-142d-41ba-89a2-12452640ce6d",
         display_name="தமிழ்",
         greeting_text=(
-            "வணக்கம்! நான் சந்திப்பு பதிவு செய்ய உதவுகிறேன். "
-            "தமிழ், ஆங்கிலம், ஹிந்தி அல்லது நீங்கள் விரும்பும் மொழியில் "
-            "பேசலாம். உங்களுக்கு என்ன வேண்டும்?"
+            "வணக்கம், நீங்கள் எப்படி இருக்கிறீர்கள்? "
+            "மருத்துவர் சந்திப்பு பதிவு செய்ய வேண்டுமா?"
         ),
     ),
     "te": LangEntry(
@@ -70,9 +67,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="76961778-5ce4-4aa9-9cdf-66a029d61a8f",
         display_name="తెలుగు",
         greeting_text=(
-            "నమస్కారం! అపాయింట్‌మెంట్ బుక్ చేయడంలో నేను సహాయం చేస్తాను. "
-            "తెలుగు, ఇంగ్లీష్, హిందీ లేదా మీకు సౌకర్యమైన భాషలో "
-            "మాట్లాడవచ్చు. మీకు ఏమి కావాలి?"
+            "నమస్కారం, మీరు ఎలా ఉన్నారు? "
+            "డాక్టర్ అపాయింట్‌మెంట్ బుక్ చేయాలనుకుంటున్నారా?"
         ),
     ),
     "kn": LangEntry(
@@ -80,9 +76,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="7c6219d2-e8d2-462c-89d8-7ecba7c75d65",
         display_name="ಕನ್ನಡ",
         greeting_text=(
-            "ನಮಸ್ಕಾರ! ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಲು ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ. "
-            "ಕನ್ನಡ, ಇಂಗ್ಲಿಷ್, ಹಿಂದಿ ಅಥವಾ ನಿಮಗೆ ಸೌಕರ್ಯವಾದ ಭಾಷೆಯಲ್ಲಿ "
-            "ಮಾತನಾಡಬಹುದು. ನಿಮಗೆ ಏನು ಬೇಕು?"
+            "ನಮಸ್ಕಾರ, ನೀವು ಹೇಗಿದ್ದೀರಿ? "
+            "ವೈದ್ಯರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಬೇಕೇ?"
         ),
     ),
     "ml": LangEntry(
@@ -90,9 +85,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="b426013c-002b-4e89-8874-8cd20b68373a",
         display_name="മലയാളം",
         greeting_text=(
-            "നമസ്കാരം! അപ്പോയിന്റ്മെന്റ് ബുക്ക് ചെയ്യാൻ ഞാൻ സഹായിക്കും. "
-            "മലയാളം, ഇംഗ്ലീഷ്, ഹിന്ദി അല്ലെങ്കിൽ നിങ്ങൾക്ക് "
-            "സുഖമായ ഭാഷയിൽ സംസാരിക്കാം. നിങ്ങൾക്ക് എന്താണ് വേണ്ടത്?"
+            "നമസ്കാരം, സുഖമാണോ? "
+            "ഡോക്ടർ അപ്പോയിന്റ്മെന്റ് ബുക്ക് ചെയ്യണോ?"
         ),
     ),
     "mr": LangEntry(
@@ -100,9 +94,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="5c32dce6-936a-4892-b131-bafe474afe5f",
         display_name="मराठी",
         greeting_text=(
-            "नमस्कार! मी अपॉइंटमेंट बुक करण्यात मदत करते. "
-            "मराठी, इंग्रजी, हिंदी किंवा तुम्हाला सोयीच्या भाषेत "
-            "बोलू शकता. तुम्हाला काय हवे आहे?"
+            "नमस्कार, तुम्ही कसे आहात? "
+            "डॉक्टरची अपॉइंटमेंट बुक करायची आहे का?"
         ),
     ),
     "gu": LangEntry(
@@ -110,9 +103,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="4590a461-bc68-4a50-8d14-ac04f5923d22",
         display_name="ગુજરાતી",
         greeting_text=(
-            "નમસ્તે! હું એપોઇન્ટમેન્ટ બુક કરવામાં મદદ કરું છું. "
-            "ગુજરાતી, અંગ્રેજી, હિન્દી અથવા તમને ગમતી ભાષામાં "
-            "બોલી શકો છો. તમને શું જોઈએ છે?"
+            "નમસ્તે, તમે કેમ છો? "
+            "ડૉક્ટરની એપોઇન્ટમેન્ટ બુક કરવી છે?"
         ),
     ),
     "pa": LangEntry(
@@ -120,9 +112,8 @@ LANG_CONFIG: dict[str, LangEntry] = {
         cartesia_voice_id="991c62ce-631f-48b0-8060-2a0ebecbd15b",
         display_name="ਪੰਜਾਬੀ",
         greeting_text=(
-            "ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਅਪਾਇੰਟਮੈਂਟ ਬੁਕ ਕਰਨ ਵਿੱਚ ਮਦਦ ਕਰਦੀ ਹਾਂ। "
-            "ਪੰਜਾਬੀ, ਅੰਗਰੇਜ਼ੀ, ਹਿੰਦੀ ਜਾਂ ਜਿਸ ਭਾਸ਼ਾ ਵਿੱਚ ਚਾਹੋ ਬੋਲ ਸਕਦੇ ਹੋ। "
-            "ਤੁਹਾਨੂੰ ਕੀ ਚਾਹੀਦਾ ਹੈ?"
+            "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਤੁਸੀਂ ਠੀਕ ਹੋ? "
+            "ਡਾਕਟਰ ਦੀ ਅਪਾਇੰਟਮੈਂਟ ਬੁਕ ਕਰਨੀ ਸੀ?"
         ),
     ),
 }

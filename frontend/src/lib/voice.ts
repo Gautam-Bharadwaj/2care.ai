@@ -22,7 +22,17 @@ import type { AgentEvent } from "./types";
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 /** Min recorded audio before we bother calling STT (bytes). */
-const MIN_AUDIO_BYTES = 400;
+const MIN_AUDIO_BYTES = 200;
+
+/** RMS thresholds (0–1). Lower = easier to detect quiet mics / laptop mics. */
+const UI_SPEECH_THRESHOLD = 0.022;
+const RECORD_SPEECH_THRESHOLD = 0.016;
+
+/** Silence after speech before we stop recording and send to STT. */
+const END_SILENCE_MS = 1100;
+
+/** Pause after agent TTS so speaker bleed does not trip VAD / STT. */
+const POST_AGENT_AUDIO_MS = 550;
 
 export interface VoiceCallOptions {
   language: LangCode;
@@ -103,6 +113,14 @@ class VoiceEngine {
     this.abort = new AbortController();
     const { language, onConnected, onError } = this.opts;
 
+    const backendOk = await this.checkBackend();
+    if (!backendOk) {
+      onError?.(
+        "Voice backend is not running. In another terminal run: uv run twocare-backend"
+      );
+      throw new Error("BACKEND_DOWN");
+    }
+
     try {
       this.mediaStream = await requestMicrophone();
     } catch (e) {
@@ -158,7 +176,7 @@ class VoiceEngine {
       this.emit({ type: "state", value: "listening" });
 
       await resumeAudioContext(this.audioCtx);
-      await sleep(300);
+      await sleep(POST_AGENT_AUDIO_MS);
 
       const userText = await this.recordAndTranscribe(language);
       this.isListenPhase = false;
@@ -257,25 +275,43 @@ class VoiceEngine {
     }
   }
 
+  private async checkBackend(): Promise<boolean> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    try {
+      const r = await fetch(`${API_BASE}/healthz`, { signal: ctrl.signal });
+      return r.ok;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private measurePeak(): number {
+    if (!this.analyser) return 0;
+    const buf = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteTimeDomainData(buf);
+    let peak = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const v = Math.abs(buf[i] - 128) / 128;
+      if (v > peak) peak = v;
+    }
+    return peak;
+  }
+
   private runAmpLoop() {
     if (!this.analyser) return;
-    const buf = new Uint8Array(this.analyser.frequencyBinCount);
     let prev = 0;
-    const SPEECH_THRESHOLD = 0.04;
 
     const tick = () => {
       if (this.cancelled || !this.analyser) return;
-      this.analyser.getByteTimeDomainData(buf);
-      let peak = 0;
-      for (let i = 0; i < buf.length; i++) {
-        const v = Math.abs(buf[i] - 128) / 128;
-        if (v > peak) peak = v;
-      }
+      const peak = this.measurePeak();
       prev = prev * 0.55 + peak * 0.45;
       this.opts.onAmplitude?.(prev);
 
       if (this.isListenPhase) {
-        const loud = prev > SPEECH_THRESHOLD;
+        const loud = prev > UI_SPEECH_THRESHOLD;
         if (loud && !this.userSpeaking) {
           this.userSpeaking = true;
           this.silenceStartedAt = 0;
@@ -330,13 +366,11 @@ class VoiceEngine {
 
       let heardSpeech = false;
       let silenceMs = 0;
-      const SPEECH_THRESHOLD = 0.028;
-      const END_SILENCE_MS = 900;
-      const MAX_MS = 20000;
-      const NO_SPEECH_GIVE_UP_MS = 12000;
+      const MAX_MS = 22000;
+      const NO_SPEECH_GIVE_UP_MS = 14000;
+      const FIXED_RECORD_MS = 7000;
       const started = performance.now();
-
-      const buf = this.analyser ? new Uint8Array(this.analyser.frequencyBinCount) : null;
+      const hasVad = Boolean(this.analyser);
 
       const poll = () => {
         if (done || this.cancelled) {
@@ -348,27 +382,23 @@ class VoiceEngine {
           return;
         }
 
-        let peak = 0;
-        if (buf && this.analyser) {
-          this.analyser.getByteTimeDomainData(buf);
-          for (let i = 0; i < buf.length; i++) {
-            const v = Math.abs(buf[i] - 128) / 128;
-            if (v > peak) peak = v;
+        const peak = this.measurePeak();
+
+        if (hasVad) {
+          if (peak > RECORD_SPEECH_THRESHOLD) {
+            heardSpeech = true;
+            silenceMs = 0;
+          } else if (heardSpeech) {
+            silenceMs += 80;
           }
         }
 
-        if (peak > SPEECH_THRESHOLD) {
-          heardSpeech = true;
-          silenceMs = 0;
-        } else if (heardSpeech) {
-          silenceMs += 80;
-        }
-
         const elapsed = performance.now() - started;
-        const shouldStop =
-          (heardSpeech && silenceMs >= END_SILENCE_MS) ||
-          elapsed >= MAX_MS ||
-          (!heardSpeech && elapsed >= NO_SPEECH_GIVE_UP_MS);
+        const shouldStop = hasVad
+          ? (heardSpeech && silenceMs >= END_SILENCE_MS) ||
+            elapsed >= MAX_MS ||
+            (!heardSpeech && elapsed >= NO_SPEECH_GIVE_UP_MS)
+          : elapsed >= FIXED_RECORD_MS || elapsed >= MAX_MS;
 
         if (shouldStop && recorder.state === "recording") {
           recorder.stop();
@@ -430,10 +460,17 @@ class VoiceEngine {
       });
       if (this.cancelled) return "";
       if (!r.ok) {
-        console.warn("[voice] STT failed", r.status, await r.text().catch(() => ""));
-        this.opts.onError?.(
-          "Could not reach speech recognition. Make sure the backend is running: uv run twocare-backend"
-        );
+        const detail = await r.text().catch(() => "");
+        console.warn("[voice] STT failed", r.status, detail);
+        if (r.status === 503) {
+          this.opts.onError?.(
+            "Speech recognition is not configured. Add DEEPGRAM_API_KEY to .env and restart the backend."
+          );
+        } else {
+          this.opts.onError?.(
+            "Could not transcribe your voice. Make sure the backend is running: uv run twocare-backend"
+          );
+        }
         return "";
       }
       const data = await r.json();
@@ -495,13 +532,21 @@ class VoiceEngine {
             finish();
           };
           await resumeAudioContext(this.audioCtx);
-          await audio.play();
+          try {
+            await audio.play();
+          } catch (playErr) {
+            console.warn("[voice] audio.play failed", playErr);
+            URL.revokeObjectURL(url);
+            finish();
+            return;
+          }
           if (this.cancelled) {
             audio.pause();
             URL.revokeObjectURL(url);
             finish();
           }
-        } catch {
+        } catch (err) {
+          console.warn("[voice] speak failed", err);
           if (!this.cancelled) finish();
         }
       })();
