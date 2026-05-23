@@ -22,9 +22,6 @@ A 3-minute walkthrough of the live demo and architecture overview.
 
 The system is a modular async pipeline in **Python 3.11** (FastAPI, LiveKit Agents, Celery) and **TypeScript** (Vite + React). Real-time calls run on **LiveKit**; the browser can also use a **server-mediated fallback** (mic → Deepgram STT → Groq LLM → Cartesia TTS) when LiveKit is off.
 
-![Architecture](assets/architecture.png)
-
-Mermaid source (kept inline so the diagram stays in version control):
 
 ```mermaid
 flowchart TD
