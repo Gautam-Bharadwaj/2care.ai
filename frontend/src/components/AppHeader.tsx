@@ -42,7 +42,7 @@ export default function AppHeader() {
 
   return (
     <header className="w-full">
-      <div className="glass-card grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-3 md:gap-4 px-4 sm:px-5 py-3">
+      <div className="glass-card !rounded-full grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-3 md:gap-4 px-6 sm:px-8 py-3">
         <NavLink
           to="/"
           className="flex items-center shrink-0 justify-self-start opacity-95 hover:opacity-100 transition-opacity"
