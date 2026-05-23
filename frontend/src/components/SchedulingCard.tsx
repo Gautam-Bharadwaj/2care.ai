@@ -135,7 +135,7 @@ export default function SchedulingCard({
         <StatusPill status={status} label={L} />
       </div>
 
-      <StepBar steps={L.steps} activeStep={status === "confirmed" ? 3 : step} />
+      <StepBar steps={L.steps} activeStep={status === "confirmed" ? 4 : step} />
 
       <div className="p-4 space-y-3">
         <FieldRow

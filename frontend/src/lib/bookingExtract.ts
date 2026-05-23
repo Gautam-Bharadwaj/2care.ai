@@ -67,6 +67,11 @@ export function updateSchedulingFromAgent(
     step = 3;
   }
 
+  if (isConfirmed(text)) {
+    status = "confirmed";
+    step = 3;
+  }
+
   if (status === "idle" && (booking.doctor || booking.time || booking.date)) {
     status = "in_progress";
     step = 2;
@@ -105,6 +110,12 @@ function mentionsSlots(t: string): boolean {
 
 function asksConfirmation(t: string): boolean {
   return /\b(confirm|shall i book|book it for you|does that work|works for you|क्या यह समय|बुक कर दू|பதிவு செய்யவா|నిర్ధారించ)\b/i.test(
+    t
+  );
+}
+
+function isConfirmed(t: string): boolean {
+  return /\b(booked|success|done|all set|scheduled|appointment is set|booking complete|बुक हो गया|बुक कर दिया|सफलतापूर्वक|பதிவு செய்யப்பட்டது|స్థిరపరచబడింది|ಬುಕ್ ಆಗಿದೆ)\b/i.test(
     t
   );
 }

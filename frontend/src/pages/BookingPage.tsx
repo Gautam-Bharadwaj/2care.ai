@@ -276,10 +276,9 @@ export default function BookingPage() {
         <div
           className={cn(
             "w-full flex flex-col gap-6 sm:gap-8",
-            state.page.kind === "active" && "max-w-[960px] mx-auto",
+            (state.page.kind === "active" || state.page.kind === "ended_success") && "max-w-[960px] mx-auto",
             state.page.kind === "idle" && "max-w-none",
             (state.page.kind === "connecting" ||
-              state.page.kind === "ended_success" ||
               state.page.kind === "ended_no_booking" ||
               state.page.kind === "error") &&
               "max-w-[480px] mx-auto"
@@ -309,11 +308,21 @@ export default function BookingPage() {
           )}
 
           {state.page.kind === "ended_success" && (
-            <ConfirmationCard
-              booking={state.page.booking}
-              language={state.activeLanguage}
-              onDone={onReset}
-            />
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:items-start animate-line-fade w-full">
+              <div className="flex justify-center w-full">
+                <ConfirmationCard
+                  booking={state.page.booking}
+                  language={state.activeLanguage}
+                  onDone={onReset}
+                />
+              </div>
+              <aside className="hidden lg:block sticky top-6">
+                <SchedulingCard
+                  scheduling={state.scheduling}
+                  language={state.activeLanguage}
+                />
+              </aside>
+            </div>
           )}
 
           {state.page.kind === "ended_no_booking" && (
