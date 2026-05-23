@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!-- Open Graph share image. SVG (not PNG) keeps it editable. For
+       production, render this to og-image.png at 1200x630 — most
+       social-card validators handle SVG too. -->
+  <rect width="1200" height="630" fill="#fafaf3"/>
+  <circle cx="600" cy="290" r="120" fill="#256974"/>
+  <text x="600" y="313" font-family="Inter, sans-serif" font-size="92"
+        font-weight="700" fill="#ffffff" text-anchor="middle"
+        letter-spacing="-3">2c</text>
+  <text x="600" y="500" font-family="Inter, sans-serif" font-size="56"
+        font-weight="600" fill="#1a2a30" text-anchor="middle"
+        letter-spacing="-2">2careAi</text>
+  <text x="600" y="560" font-family="Inter, sans-serif" font-size="26"
+        font-weight="400" fill="#4a5560" text-anchor="middle">
+    Book your clinic appointment — by voice, in 5 Indian languages
+  </text>
+</svg>
