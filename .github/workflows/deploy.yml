@@ -1,0 +1,129 @@
+name: deploy
+
+# Trigger:
+#   - on push to main → test, then deploy backend/agent/worker in parallel
+#   - manual via "Run workflow" with a `target` filter for partial deploys
+#     (useful when only the agent image needs rebuilding)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Apps to deploy"
+        type: choice
+        default: all
+        options: [all, backend, agent, worker]
+
+# Stop a previous run if a newer commit lands on main — no point
+# deploying a commit that's about to be superseded.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: twocare
+          POSTGRES_PASSWORD: twocare
+          POSTGRES_DB: twocare
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U twocare"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - run: uv python install 3.11
+      - run: uv sync --all-extras
+      - name: alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://twocare:twocare@localhost:5432/twocare
+        run: uv run alembic upgrade head
+      - name: pytest
+        env:
+          DATABASE_URL: postgresql+asyncpg://twocare:twocare@localhost:5432/twocare
+          REDIS_URL: redis://localhost:6379/0
+        run: uv run pytest -q --tb=short
+
+  # ──────────────────────────────────────────────────────────────────
+  # Deploy jobs run in parallel — each is independent and idempotent.
+  # All three depend on `test` so a red build never deploys.
+  # ──────────────────────────────────────────────────────────────────
+
+  deploy-backend:
+    name: deploy backend
+    needs: test
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'backend'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-backend-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      # `--remote-only` builds on Fly's remote builder so we don't pay
+      # for a 5GB Docker layer cache on the CI runner. The release_command
+      # in fly.backend.toml runs alembic upgrade head before the new
+      # machine takes traffic.
+      - run: flyctl deploy --config infra/fly.backend.toml --dockerfile infra/Dockerfile.backend --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-agent:
+    name: deploy agent
+    needs: test
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'agent'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-agent-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --config infra/fly.agent.toml --dockerfile infra/Dockerfile.agent --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-worker:
+    name: deploy worker
+    needs: test
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'worker'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-worker-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --config infra/fly.worker.toml --dockerfile infra/Dockerfile.worker --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # Sanity-check the deployment landed. /healthz exercises DB + Redis
+  # so this fails loudly if Neon or Upstash changed their URL on us.
+  smoke:
+    name: post-deploy smoke
+    needs: [deploy-backend, deploy-agent, deploy-worker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe /healthz
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            body=$(curl -sf https://twocare-backend.fly.dev/healthz) && break
+            echo "attempt $i failed, retrying in 6s..." && sleep 6
+          done
+          echo "$body" | tee /tmp/health.json
+          status=$(echo "$body" | python -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+          test "$status" = "ok" || { echo "::error::status=$status"; exit 1; }
